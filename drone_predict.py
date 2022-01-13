@@ -74,9 +74,22 @@ filepath = base_dir + file_path
 # Import dataframe
 df = pd.read_excel('table2.ods')
 
-# TODO TEST ARGS NOT NULL != override.
+# Import datawframe
 loaded_model = joblib.load(str(filepath + model + ".sav"))
 
+
+
+# Get X_test -> tested drone (Pandas)
+def getXtest():
+    if (args.override == None):
+        test = df.loc[(df['Pos'] == args.alignment) & (
+            df['Model'] == args.model) & (df['f[GHz]'] == args.frequency)]
+        X_test = test.drop(columns=['Model', 'Pos', 'std', 'Group'])
+    else:
+        X_test = pd.DataFrame([[args.override[0], args.override[1], args.override[2]]])
+    return X_test
+
+# Checks multiple flags
 if(args.override is not None) and ((args.alignment is not None) or (args.model is not None) or (args.frequency is not None)):
     print(bcolors.FAIL +
           "ERROR: use -a, -m, -f together, -od alone. -c is required." + bcolors.ENDC)
@@ -84,21 +97,13 @@ if(args.override is not None) and ((args.alignment is not None) or (args.model i
 elif (args.override != None) and (len(args.override) != 3):
     print(bcolors.FAIL + "3 values are needed. Exiting" + bcolors.ENDC)
     sys.exit(1)
+elif (getXtest().empty):
+    print(bcolors.FAIL + "Empty Record, try changing HH/VV" + bcolors.ENDC)
+    sys.exit(1)
 else:
     print(bcolors.OKCYAN + "OK" + bcolors.ENDC)
 
-# args -a, -m, -f for not none
-if (args.override == None):
-    test = df.loc[(df['Pos'] == args.alignment) & (
-        df['Model'] == args.model) & (df['f[GHz]'] == args.frequency)]
-    X_test = test.drop(columns=['Model', 'Pos', 'std', 'Group'])
 
-    # TEST HARDCODED
-    # ['P4P']
-    # X_test = [[26,-15.7,0.1]]
-    print("predicted:  " + bcolors.BOLD + bcolors.OKGREEN +
-          str(loaded_model.predict(X_test)[0]) + bcolors.ENDC)
-else:
-    X_test = [[args.override[0], args.override[1], args.override[2]]]
-    print("predicted:  " + bcolors.BOLD + bcolors.OKGREEN +
-          str(loaded_model.predict(X_test)[0]) + bcolors.ENDC)
+# Predict using Xtest
+print("predicted:  " + bcolors.BOLD + bcolors.OKGREEN +
+      str(loaded_model.predict(getXtest())[0]) + bcolors.ENDC)
